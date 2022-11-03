@@ -1,0 +1,153 @@
+CREATE DATABASE proyecto_individual; #Creamos la clase de datos
+USE proyecto_individual; #Especificamos que en esta base de datos es la que vamos a trabajar
+
+/*Creacion de las tablas*/
+DROP TABLE IF EXISTS `precios_semana_20200413`;
+CREATE TABLE IF NOT EXISTS `precios_semana_20200413` (
+  	`Precio` 		FLOAT(20,10),
+  	`Producto_id` 	VARCHAR(20),
+	`Sucursal_id`   VARCHAR(20)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+/*Carga de los datasets*/
+LOAD DATA INFILE "C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Uploads\\CSV\\precios_semana_20200413"
+INTO TABLE `precios_semana_20200413` 
+FIELDS TERMINATED BY ',' ENCLOSED BY '' ESCAPED BY '' 
+LINES TERMINATED BY '\n' IGNORE 1 LINES;
+
+/*Visualizar los primeros 10 registros de la tabla*/
+SELECT *FROM precios_semana_20200413
+LIMIT 10;
+
+DROP TABLE IF EXISTS `precios_semana_20200503`;
+CREATE TABLE IF NOT EXISTS `precios_semana_20200503` (
+  	`Precio` 		FLOAT(20,10),
+  	`Producto_id` 	VARCHAR(20),
+	`Sucursal_id`   VARCHAR(20)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+LOAD DATA INFILE "C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Uploads\\CSV\\precios_semana_20200503"
+INTO TABLE `precios_semana_20200503` 
+FIELDS TERMINATED BY ',' ENCLOSED BY '' ESCAPED BY '' 
+LINES TERMINATED BY '\n' IGNORE 1 LINES;
+
+SELECT *FROM precios_semana_20200503
+LIMIT 10;
+
+DROP TABLE IF EXISTS `precios_semana_20200518`;
+CREATE TABLE IF NOT EXISTS `precios_semana_20200518` (
+  	`Precio` 		FLOAT(20,10),
+  	`Producto_id` 	VARCHAR(20),
+	`Sucursal_id`   VARCHAR(20)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+LOAD DATA INFILE "C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Uploads\\CSV\\precios_semana_20200518"
+INTO TABLE `precios_semana_20200518` 
+FIELDS TERMINATED BY ',' ENCLOSED BY '' ESCAPED BY '' 
+LINES TERMINATED BY '\n' IGNORE 1 LINES;
+
+SELECT *FROM precios_semana_20200413
+LIMIT 10;
+
+
+DROP TABLE IF EXISTS `producto`;
+CREATE TABLE IF NOT EXISTS `producto` (
+`Id` VARCHAR(30),
+`marca` VARCHAR(60),
+`nombre` VARCHAR(200),
+`presentacion` VARCHAR(60),
+`categoria1` VARCHAR(40),
+`categoria2` VARCHAR(40),
+`categoria3` VARCHAR(40)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+LOAD DATA INFILE "C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Uploads\\CSV\\producto"
+INTO TABLE `producto` 
+FIELDS TERMINATED BY ';' ENCLOSED BY '' ESCAPED BY '' 
+LINES TERMINATED BY '\n' IGNORE 1 LINES;
+
+SELECT *FROM producto
+LIMIT 10;
+
+DROP TABLE IF EXISTS `sucursal`;
+CREATE TABLE IF NOT EXISTS `sucursal` (
+`Id` VARCHAR(250),
+`comercioId` VARCHAR(20),
+`banderaId` VARCHAR(20),
+`banderaDescripcion` VARCHAR(270),
+`comercioRazonSocial` VARCHAR(270),
+`provincia` VARCHAR(270),
+`localidad` VARCHAR(270),
+`direccion` VARCHAR(270),
+`lat` VARCHAR(260),
+`lng` VARCHAR(260),
+`sucursalNombre` VARCHAR(260),
+`sucursalTipo` VARCHAR(260)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+LOAD DATA INFILE "C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Uploads\\CSV\\sucursal"
+INTO TABLE `sucursal` 
+FIELDS TERMINATED BY ';' ENCLOSED BY '' ESCAPED BY '' 
+LINES TERMINATED BY '\n' IGNORE 1 LINES;
+
+SELECT * FROM sucursal
+LIMIT 10;
+
+
+/*Creamos una tabla llamada ventas que almacenara la informacion de todas las tablas de precios*/
+CREATE TABLE ventas (
+	id_venta 	INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	precio 		FLOAT(50,30),
+    producto_id VARCHAR (30),
+    sucursal_id VARCHAR(30),
+    fecha 		VARCHAR(20)
+);
+
+/*Insertamos en la tabla ventas todos los registros contenidos en cada una de las tablas de precios*/
+INSERT INTO ventas (precio, producto_id, sucursal_id)
+SELECT * FROM precios_semana_20200413;
+UPDATE ventas SET fecha = '20200413' WHERE fecha = '' OR ISNULL(fecha); #CON ESTE CODIGO ESTAMOS SETEANDO A LA COLUMNA FECHA LA SEMANA A LA CUAL PERTENECEN ESOS REGISTROS
+
+INSERT INTO ventas (precio, producto_id, sucursal_id)
+SELECT * FROM precios_semana_20200503;
+UPDATE ventas SET fecha = '20200503' WHERE fecha = '' OR ISNULL(fecha);
+
+INSERT INTO ventas (precio, producto_id, sucursal_id)
+SELECT * FROM precios_semana_20200518;
+UPDATE ventas SET fecha = '20200518' WHERE fecha = '' OR ISNULL(fecha);
+
+/*Con esta sentencia vamos a cambiar de lugar la columna producto_id para que los datos en esta columna coincidan con la columna producto_id en la tabla de venta*/
+ALTER TABLE precios_semana_20200419_20200426 
+CHANGE COLUMN producto_id producto_id TEXT NULL DEFAULT NULL AFTER precio;
+
+/*Realizamos la carga incremental con la tabla creada con SqlAlchemy ya que esta contiene los registros limpios y normalizados*/
+INSERT INTO ventas (precio, producto_id, sucursal_id)
+SELECT * FROM precios_semana_20200419_20200426;
+UPDATE ventas SET fecha = '20200419_20200426' WHERE fecha = '' OR ISNULL(fecha);
+
+
+/*REALIZAMOS LA CONSULTA*/
+SELECT AVG(precio) FROM ventas
+WHERE sucursal_id = '9-1-688';
+
+/* PLUS
+Crearemos una tabla de auditoria para la tabla de precios_20200419_20200426 para almacenar los cambios que se hagan dentro de esta
+y junto con esta crearemos un TRIGGER que nos permitira actualizar la tabla cada que haya una insercion de datos nueva/*
+
+/*Creamos una tabla de auditoria para guardar los cambios/actualizacion de los registros en la tabla*/
+CREATE TABLE `precios_semana_20200419_20200426_cambios` (
+	`IdCambio`  	  	    INT NOT NULL AUTO_INCREMENT,
+    `Precio`  		  		FLOAT(255,30),
+  	`Sucursal_id`     		VARCHAR(20),
+	`Producto_id`     		VARCHAR(20),
+    `fechaModificacion` 	DATETIME,
+     PRIMARY KEY (IdCambio)
+);
+
+/*Creamos un trigger que nos permitira actualizar la tabla de cambios cada que se insertan nuevos registros*/
+DROP TRIGGER IF EXISTS cambios_semanas_20200419_20200426;
+CREATE TRIGGER cambios_semanas_20200419_20200426
+AFTER INSERT ON precios_semana_20200419_20200426
+FOR EACH ROW 
+INSERT INTO cambios_semanas_20200419_20200426 (IdCambio, Precio, Sucursal_id, Producto_id, fechaModificacion)
+VALUES (NEW.Precio, NEW.Sucursal_id, NEW.Producto_id, now());
