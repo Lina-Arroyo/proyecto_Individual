@@ -42,6 +42,25 @@ INSERT INTO ventas (precio, producto_id, sucursal_id)
 SELECT * FROM precios_semana_20200518;
 UPDATE ventas SET fecha = '20200518' WHERE fecha = '' OR ISNULL(fecha);
 
+/*Creamos un trigger que nos permitira actualizar la tabla de cambios cada que se insertan nuevos registros*/
+DROP TRIGGER IF EXISTS cambios_ventas;
+CREATE TRIGGER cambios_ventas
+AFTER INSERT ON ventas
+FOR EACH ROW 
+INSERT INTO venta_cambios (IdCambio, Precio, Sucursal_id, Producto_id, fechaModificacion)
+VALUES (NEW.Precio, NEW.Sucursal_id, NEW.Producto_id, now(), user());
+
+/*Creamos una tabla de auditoria para guardar los cambios/actualizacion de los registros en la tabla*/
+CREATE TABLE venta_cambios (
+	 IdCambio  	  	    INT NOT NULL AUTO_INCREMENT,
+     Precio  		  		FLOAT(50,30),
+     Producto_id     		VARCHAR(20),
+  	 Sucursal_id     		VARCHAR(20),
+     fechaModificacion 	DATETIME,
+	 Usuario              VARCHAR(15),
+     PRIMARY KEY (IdCambio)
+);
+
 /*Con esta sentencia vamos a cambiar de lugar la columna producto_id para que los datos en esta columna coincidan con la columna producto_id en la tabla de venta*/
 ALTER TABLE precios_semana_20200419_20200426 
 CHANGE COLUMN producto_id producto_id TEXT NULL DEFAULT NULL AFTER precio;
@@ -56,26 +75,6 @@ UPDATE ventas SET fecha = '20200419_20200426' WHERE fecha = '' OR ISNULL(fecha);
 SELECT AVG(precio) FROM ventas
 WHERE sucursal_id = '9-1-688';
 
-/* PLUS
-Crearemos una tabla de auditoria para la tabla de precios_20200419_20200426 para almacenar los cambios que se hagan dentro de esta
-y junto con esta crearemos un TRIGGER que nos permitira actualizar la tabla cada que haya una insercion de datos nueva/*
 
-/*Creamos una tabla de auditoria para guardar los cambios/actualizacion de los registros en la tabla*/
-CREATE TABLE `venta_cambios` (
-	`IdCambio`  	  	    INT NOT NULL AUTO_INCREMENT,
-    `Precio`  		  		FLOAT(50,30),
-    `Producto_id`     		VARCHAR(20),
-  	`Sucursal_id`     		VARCHAR(20),
-    `fechaModificacion` 	DATETIME,
-	`Usuario`               VARCHAR(15),
-     PRIMARY KEY (IdCambio)
-);
 
-/*Creamos un trigger que nos permitira actualizar la tabla de cambios cada que se insertan nuevos registros*/
-DROP TRIGGER IF EXISTS cambios_ventas;
-CREATE TRIGGER cambios_ventas
-AFTER INSERT ON ventas
-FOR EACH ROW 
-INSERT INTO venta_cambios (IdCambio, Precio, Sucursal_id, Producto_id, fechaModificacion)
-VALUES (NEW.Precio, NEW.Sucursal_id, NEW.Producto_id, now(), user());
 
